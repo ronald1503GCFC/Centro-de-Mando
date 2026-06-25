@@ -588,13 +588,12 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
   const [titulo, setTitulo] = useState("");
   const [plantillaId, setPlantillaId] = useState("");
   const pl = plantillas.find((x) => x.id === plantillaId) || null;
-  const [entidad, setEntidad] = useState("Primer Equipo");
   const [prioridad, setPrioridad] = useState("Media");
   const [fechaTope, setFechaTope] = useState("");
-  // Al elegir plantilla, prerrellena entidad y prioridad (el usuario puede cambiarlas)
-  const elegirPlantilla = (id) => { setPlantillaId(id); const t = plantillas.find((x) => x.id === id); if (t) { setEntidad(t.entidad); setPrioridad(t.prioridad); } };
+  // Al elegir plantilla, prerrellena la prioridad (el usuario puede cambiarla)
+  const elegirPlantilla = (id) => { setPlantillaId(id); const t = plantillas.find((x) => x.id === id); if (t) setPrioridad(t.prioridad); };
   const valido = titulo.trim() && plantillaId;
-  const crear = () => { if (valido) onCreate({ titulo: titulo.trim(), plantilla: pl, entidad, prioridad, fechaTope }); };
+  const crear = () => { if (valido) onCreate({ titulo: titulo.trim(), plantilla: pl, entidad: pl?.entidad || "Primer Equipo", prioridad, fechaTope }); };
   const hayPlantillas = plantillas.length > 0;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -603,7 +602,7 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
           <h2 className="text-base font-semibold text-slate-900">Captura rápida</h2>
           <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X size={18} /></button>
         </div>
-        <p className="mb-4 text-xs text-slate-400">Elige una plantilla y ponle nombre. La plantilla precarga área, responsable y subtareas; entidad y prioridad las ajustas aquí.</p>
+        <p className="mb-4 text-xs text-slate-400">Elige una plantilla y ponle nombre. La plantilla precarga entidad, área, responsable y subtareas.</p>
         {!hayPlantillas ? (
           <p className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-700">No tienes plantillas aún. Créalas en <b>Catálogos → Plantillas de tarea</b> para usar la captura rápida, o usa "Nueva" para una actividad completa.</p>
         ) : (
@@ -615,13 +614,12 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
                 {plantillas.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </Field>
-            {pl && <p className="-mt-1 text-[11px] text-slate-400">Precarga: {pl.area} · {pl.tipoTrabajo}{pl.conSubtareas ? " · con proceso" : ""}.</p>}
+            {pl && <p className="-mt-1 text-[11px] text-slate-400">Precarga: {pl.entidad} · {pl.area} · {pl.tipoTrabajo}{pl.conSubtareas ? " · con proceso" : ""}.</p>}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Entidad *"><select className={inp} value={entidad} onChange={(e) => setEntidad(e.target.value)}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Prioridad *"><select className={inp} value={prioridad} onChange={(e) => setPrioridad(e.target.value)}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Fecha tope (opcional)"><input type="date" className={inp} value={fechaTope} onChange={(e) => setFechaTope(e.target.value)} /></Field>
             </div>
-            <Field label="Fecha tope (opcional)"><input type="date" className={inp} value={fechaTope} onChange={(e) => setFechaTope(e.target.value)} /></Field>
-            <p className="text-[11px] text-slate-400">Sin fecha tope, cae en la bandeja "Sin fecha" del Inicio. La fecha de solicitud se registra hoy.</p>
+            <p className="text-[11px] text-slate-400">Entidad, área, responsable y subtareas vienen de la plantilla. La fecha de solicitud se registra hoy.</p>
           </div>
         )}
         {hayPlantillas && (
@@ -639,15 +637,15 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
   const esNuevo = !inicial;
   const [vista, setVista] = useState("datos");
   const vacio = {
-    titulo: "", descripcion: "", proyectoId: "", entidad: "Primer Equipo", area: "Marketing", subcategoria: "",
-    tipoTrabajo: "Pieza de contenido", prioridad: "Media", fechaSolicitud: HOY.toISOString().slice(0, 10), fechaTope: "", solicitanteId: "",
-    responsableId: "dis", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], subtareas: [], eventos: [],
+    titulo: "", descripcion: "", proyectoId: "", entidad: "", area: "", subcategoria: "",
+    tipoTrabajo: "", prioridad: "", fechaSolicitud: HOY.toISOString().slice(0, 10), fechaTope: "", solicitanteId: "",
+    responsableId: "", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], subtareas: [], eventos: [],
   };
   const [f, setF] = useState(inicial ? { ...vacio, ...inicial } : vacio);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const subcatsArea = cat.subcats[f.area] || [];
   const tieneSub = f.subtareas.length > 0;
-  const valido = f.titulo.trim() && f.area && f.prioridad && f.fechaSolicitud && f.responsableId;
+  const valido = f.titulo.trim() && f.entidad && f.area && f.prioridad && f.fechaSolicitud && f.responsableId;
   const personasSel = cat.personas;
   const setSub = (i, k, v) => setF((p) => { const ns = [...p.subtareas]; ns[i] = { ...ns[i], [k]: v }; return { ...p, subtareas: ns }; });
   const addSub = () => setF((p) => ({ ...p, subtareas: [...p.subtareas, { id: "s" + Date.now(), titulo: "", duenoId: "dis", miFuncion: "Ejecuto", fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] }] }));
@@ -694,15 +692,15 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
             <FieldOpt label="Descripción / notas"><textarea className={optInp} rows={2} value={f.descripcion} onChange={(e) => set("descripcion", e.target.value)} placeholder="Brief, links, contexto…" /></FieldOpt>
             <div className="grid grid-cols-2 gap-3">
               <FieldOpt label="Proyecto"><select className={optInp} value={f.proyectoId} onChange={(e) => set("proyectoId", e.target.value)}><option value="">— Sin proyecto —</option>{cat.proyectos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></FieldOpt>
-              <Field label="Tipo de trabajo"><select className={inp} value={f.tipoTrabajo} onChange={(e) => set("tipoTrabajo", e.target.value)}>{cat.tipos.map((t) => <option key={t}>{t}</option>)}</select></Field>
+              <Field label="Tipo de trabajo"><select className={inp} value={f.tipoTrabajo} onChange={(e) => set("tipoTrabajo", e.target.value)}><option value="">—</option>{cat.tipos.map((t) => <option key={t}>{t}</option>)}</select></Field>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label="Entidad"><select className={inp} value={f.entidad} onChange={(e) => set("entidad", e.target.value)}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="Área *"><select className={reqCls(f.area)} value={f.area} onChange={(e) => { set("area", e.target.value); set("subcategoria", ""); }}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Entidad *"><select className={reqCls(f.entidad)} value={f.entidad} onChange={(e) => set("entidad", e.target.value)}><option value="">— Selecciona —</option>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Área *"><select className={reqCls(f.area)} value={f.area} onChange={(e) => { set("area", e.target.value); set("subcategoria", ""); }}><option value="">— Selecciona —</option>{AREAS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Subcategoría"><select className={inp} value={f.subcategoria} onChange={(e) => set("subcategoria", e.target.value)}><option value="">—</option>{subcatsArea.map((x) => <option key={x}>{x}</option>)}</select></Field>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label="Prioridad *"><select className={reqCls(f.prioridad)} value={f.prioridad} onChange={(e) => set("prioridad", e.target.value)}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Prioridad *"><select className={reqCls(f.prioridad)} value={f.prioridad} onChange={(e) => set("prioridad", e.target.value)}><option value="">— Selecciona —</option>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Fecha de solicitud *"><input type="date" className={reqCls(f.fechaSolicitud)} value={f.fechaSolicitud} onChange={(e) => set("fechaSolicitud", e.target.value)} /></Field>
               <Field label="Fecha tope"><input type="date" className={inp} value={f.fechaTope} onChange={(e) => set("fechaTope", e.target.value)} /></Field>
             </div>
