@@ -50,6 +50,14 @@ const PLANTILLA_CONTENIDO = [
 // Subtareas propias de la plantilla. Compatibilidad: plantillas viejas con conSubtareas usan el set de contenido.
 const plantillaSubs = (t) => Array.isArray(t.subtareasPlantilla) ? t.subtareasPlantilla : (t.conSubtareas ? PLANTILLA_CONTENIDO : []);
 const materializarSubs = (t) => plantillaSubs(t).map((s, i) => ({ id: "s" + Date.now() + i, titulo: s.titulo, duenoId: s.duenoId, miFuncion: s.miFuncion || "Ejecuto", fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] }));
+// Grupos de área para la visibilidad por grupos (el admin asigna personas y define qué grupo ve a qué grupo)
+const GRUPOS_DEFAULT = [
+  { id: "g_dir", nombre: "Dirección" },
+  { id: "g_dis", nombre: "Diseño" },
+  { id: "g_cont", nombre: "Contenido / Prensa" },
+  { id: "g_com", nombre: "Comercial / Patrocinios" },
+  { id: "g_mkt", nombre: "Marketing / Marca" },
+];
 
 const SEED = {
   catalogos: {
@@ -459,9 +467,10 @@ function Inicio({ units, acts, nombre, onOpen, onDia }) {
   );
 }
 
-function PorPersona({ units, personas, nombre, onOpen }) {
+function PorPersona({ units, personas, nombre, onOpen, verUnit }) {
   const [sub, setSub] = useState("pendiente"); // pendiente | historial
   const [desde, setDesde] = useState(""); const [hasta, setHasta] = useState("");
+  const ver = verUnit || (() => true);
   const enRango = (u) => {
     if (!desde && !hasta) return true;
     if (!u.fecha) return false;
@@ -498,6 +507,8 @@ function PorPersona({ units, personas, nombre, onOpen }) {
       <div className="grid gap-4 md:grid-cols-2">
         {grupos.map((g) => {
           const lista = sub === "pendiente" ? g.pendiente : g.historial;
+          const visibles = lista.filter(ver);
+          const ocultas = lista.length - visibles.length;
           return (
             <div key={g.id} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -511,13 +522,14 @@ function PorPersona({ units, personas, nombre, onOpen }) {
                 </div>
               </div>
               <ul className="space-y-2">
-                {lista.map((u) => (
+                {visibles.map((u) => (
                   <li key={u.key} onClick={() => onOpen(u.actId)} className="-mx-1 flex cursor-pointer items-start gap-2 rounded-md px-1 py-1 hover:bg-slate-50">
                     <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ESTADO[u.estado].dot}`} />
                     <div className="min-w-0"><p className="truncate text-sm text-slate-700">{u.titulo}</p><p className="text-[11px] text-slate-400">{u.base ? u.base + " · " : ""}{fmt(u.fecha)}{sub === "pendiente" && venc(u) && <span className="font-medium text-rose-600"> · vencida</span>}</p></div>
                   </li>
                 ))}
-                {lista.length === 0 && <li className="py-2 text-center text-xs text-slate-400">—</li>}
+                {ocultas > 0 && <li className="px-1 py-1 text-[11px] italic text-slate-400">+{ocultas} {ocultas === 1 ? "actividad no visible" : "actividades no visibles"} para tu área</li>}
+                {visibles.length === 0 && ocultas === 0 && <li className="py-2 text-center text-xs text-slate-400">—</li>}
               </ul>
             </div>
           );
@@ -804,20 +816,45 @@ function Catalogos({ cat, setCat }) {
   const [nPr, setNPr] = useState({ nombre: "", entidad: "Primer Equipo", descripcion: "" });
   const [nS, setNS] = useState(""); const [nT, setNT] = useState("");
   const upd = (parcial) => setCat({ ...cat, ...parcial });
+  const grupos = cat.grupos || GRUPOS_DEFAULT;
+  const verGrupos = cat.verGrupos || {};
+  const toggleVer = (gId, otherId) => { const a = verGrupos[gId] || []; const next = a.includes(otherId) ? a.filter((x) => x !== otherId) : [...a, otherId]; upd({ verGrupos: { ...verGrupos, [gId]: next } }); };
+  const modo = cat.visibilidad || "todos";
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Users size={15} className="text-slate-400" />Visibilidad del equipo</p>
         <p className="mb-3 text-xs text-slate-400">Define qué pueden ver los miembros (no aplica al administrador, que siempre ve todo).</p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          {[["todos", "Todos ven todo", "Cada quien ve las actividades de todos."], ["solo", "Cada quien ve solo lo suyo", "Un miembro solo ve las actividades donde es responsable o tiene una subtarea."]].map(([id, t, d]) => (
-            <button key={id} onClick={() => upd({ visibilidad: id })} className={`flex-1 rounded-lg border p-3 text-left transition ${ (cat.visibilidad || "todos") === id ? "border-sky-400 bg-sky-50" : "border-slate-200 hover:border-slate-300" }`}>
+          {[["todos", "Todos ven todo", "Cada quien ve las actividades de todos."], ["grupos", "Por grupos de área", "Cada quien ve su grupo y los grupos que le permitas abajo."], ["solo", "Cada quien ve solo lo suyo", "Solo donde es responsable o tiene una subtarea."]].map(([id, t, d]) => (
+            <button key={id} onClick={() => upd({ visibilidad: id })} className={`flex-1 rounded-lg border p-3 text-left transition ${ modo === id ? "border-sky-400 bg-sky-50" : "border-slate-200 hover:border-slate-300" }`}>
               <p className="text-sm font-medium text-slate-800">{t}</p>
               <p className="mt-0.5 text-[11px] text-slate-400">{d}</p>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Las actividades marcadas como "Privada" solo las ve el administrador, en cualquiera de los dos modos.</p>
+        {modo === "grupos" && (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 text-xs font-medium text-slate-600">Permisos entre grupos</p>
+            <p className="mb-3 text-[11px] text-slate-400">Cada grupo siempre ve lo suyo. Marca qué <b>otros</b> grupos puede ver además.</p>
+            <div className="space-y-3">
+              {grupos.map((g) => (
+                <div key={g.id} className="rounded-lg bg-white p-2.5">
+                  <p className="mb-1.5 text-xs font-semibold text-slate-700">{g.nombre} <span className="font-normal text-slate-400">ve además:</span></p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                    {grupos.filter((o) => o.id !== g.id).map((o) => (
+                      <label key={o.id} className="inline-flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <input type="checkbox" checked={(verGrupos[g.id] || []).includes(o.id)} onChange={() => toggleVer(g.id, o.id)} className="h-3.5 w-3.5" />{o.nombre}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">El panorama de carga ("Por persona") siempre muestra cuántas tareas tiene cada quien; los muros aplican al detalle de las actividades.</p>
+          </div>
+        )}
+        <p className="mt-2 text-[11px] text-slate-400">Las actividades marcadas como "Privada" solo las ve el administrador, en cualquier modo.</p>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -835,6 +872,10 @@ function Catalogos({ cat, setCat }) {
               </div>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input type="email" className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-xs" placeholder="correo@guayaquilcityfc.com (para iniciar sesión)" value={p.email || ""} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, email: e.target.value }; upd({ personas: a }); }} />
+                <select className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs text-slate-600 sm:w-48" value={p.grupoId || ""} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, grupoId: e.target.value }; upd({ personas: a }); }}>
+                  <option value="">— Grupo de área —</option>
+                  {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+                </select>
                 <label className="inline-flex shrink-0 items-center gap-1.5 px-1 text-xs text-slate-500"><input type="checkbox" checked={!!p.admin} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, admin: e.target.checked }; upd({ personas: a }); }} className="h-3.5 w-3.5" />Administrador</label>
               </div>
             </div>
@@ -1003,15 +1044,29 @@ export default function CentroDeMando({ session, onSignOut }) {
   const yo = (cat?.personas || []).find((p) => (p.email || "").toLowerCase() === correo) || null;
   const esAdmin = (yo?.admin === true) || (correo === ADMIN_EMAIL);
   const actor = yo?.id || (esAdmin ? "ronald" : "anon");
-  const visibilidad = cat?.visibilidad || "todos"; // "todos" | "solo"
+  const visibilidad = cat?.visibilidad || "todos"; // "todos" | "grupos" | "solo"
+  const grupos = cat?.grupos || GRUPOS_DEFAULT;
+  const verGrupos = cat?.verGrupos || {}; // { grupoId: [grupoIds que ve además del suyo] }
+  const grupoDe = (personaId) => (cat?.personas.find((p) => p.id === personaId)?.grupoId) || "";
+  const miGrupo = yo?.grupoId || "";
+  const gruposQueVeo = new Set([miGrupo, ...((verGrupos[miGrupo]) || [])]);
   const participo = (a) => !!yo && (a.responsableId === yo.id || (a.subtareas || []).some((s) => s.duenoId === yo.id));
-  const puedeVer = (a) => esAdmin ? true : (a.privada ? false : (visibilidad === "solo" ? participo(a) : true));
+  const puedeVer = (a) => {
+    if (esAdmin) return true;
+    if (a.privada) return false;
+    if (visibilidad === "todos") return true;
+    if (visibilidad === "solo") return participo(a);
+    return participo(a) || gruposQueVeo.has(grupoDe(a.responsableId)); // "grupos"
+  };
   const puedeEditar = (a) => esAdmin || participo(a);
 
-  const actsVis = acts.filter(puedeVer);
-  const actsF = actsVis.filter((a) => entidad === "Todos" || a.entidad === entidad);
+  const actsEnt = acts.filter((a) => entidad === "Todos" || a.entidad === entidad);
+  const actsF = actsEnt.filter(puedeVer);
   const units = buildUnits(actsF);
-  const vencidasTot = buildUnits(actsVis).filter(venc).length;
+  const unitsAll = buildUnits(actsEnt); // panorama de carga (Por persona): visible para todos
+  const visibleActIds = new Set(actsF.map((a) => String(a.id)));
+  const verUnit = (u) => visibleActIds.has(String(u.actId));
+  const vencidasTot = buildUnits(actsF).filter(venc).length;
   const misPlantillas = (cat?.plantillasTarea || []).filter((t) => (t.duenoId || "ronald") === actor);
 
   const crear = (a, plantillaReq) => {
@@ -1060,7 +1115,7 @@ export default function CentroDeMando({ session, onSignOut }) {
     const c = diffEventos(null, { ...base, id: Date.now() }, actor, nombre);
     persist({ ...db, actividades: [...acts, c] }); setQuick(false);
   };
-  const abrir = (id) => { const a = acts.find((x) => x.id === id); if (a) setModal({ a, soloLectura: !puedeEditar(a) }); };
+  const abrir = (id) => { const a = acts.find((x) => x.id === id); if (a && puedeVer(a)) setModal({ a, soloLectura: !puedeEditar(a) }); };
   const live = modal && modal.a ? acts.find((x) => x.id === modal.a.id) : null;
 
   const tabs = [
@@ -1119,7 +1174,7 @@ export default function CentroDeMando({ session, onSignOut }) {
         {tab === "inicio" && <Inicio units={units} acts={actsF} nombre={nombre} onOpen={abrir} onDia={setDia} />}
         {tab === "calendario" && <Calendario units={units} onDia={setDia} />}
         {tab === "tablero" && <Kanban units={units} nombre={nombre} onOpen={abrir} onMove={mover} />}
-        {tab === "persona" && <PorPersona units={units} personas={cat.personas} nombre={nombre} onOpen={abrir} />}
+        {tab === "persona" && <PorPersona units={unitsAll} personas={cat.personas} nombre={nombre} onOpen={abrir} verUnit={verUnit} />}
         {tab === "plantillas" && <Plantillas cat={cat} setCat={setCat} actor={actor} />}
         {tab === "catalogos" && esAdmin && <Catalogos cat={cat} setCat={setCat} />}
 
