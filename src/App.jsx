@@ -947,6 +947,9 @@ function Catalogos({ cat, setCat }) {
           </div>
         </div>
       </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><FileStack size={15} className="text-slate-400" />Proyectos</p>
         <div className="space-y-2">
           {cat.proyectos.map((p, i) => (
             <div key={p.id} className="flex items-start gap-2">
