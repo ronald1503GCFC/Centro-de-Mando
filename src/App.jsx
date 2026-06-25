@@ -437,10 +437,10 @@ function Inicio({ units, acts, nombre, onOpen, onDia }) {
 
       {/* Bandeja sin fecha — colapsada */}
       <details className="rounded-xl border border-dashed border-slate-300 bg-white p-4">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-slate-700">
-          <Inbox size={15} className="text-slate-400" />Bandeja · sin fecha
+        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-700">
+          <span className="flex items-center gap-2"><Inbox size={15} className="shrink-0 text-slate-400" /><span className="whitespace-nowrap">Bandeja · sin fecha</span></span>
           <span className="rounded-full bg-slate-100 px-1.5 text-[11px] font-medium text-slate-500">{sinFecha.length}</span>
-          <span className="text-[11px] font-normal text-slate-400">— para tu repaso, no para el día</span>
+          <span className="hidden text-[11px] font-normal text-slate-400 sm:inline">— para tu repaso, no para el día</span>
         </summary>
         {sinFecha.length === 0 ? <p className="py-2 text-center text-xs text-slate-400">Vacía.</p> : (
           <ul className="mt-3 space-y-1.5">
@@ -696,12 +696,12 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
               <FieldOpt label="Proyecto"><select className={optInp} value={f.proyectoId} onChange={(e) => set("proyectoId", e.target.value)}><option value="">— Sin proyecto —</option>{cat.proyectos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></FieldOpt>
               <Field label="Tipo de trabajo"><select className={inp} value={f.tipoTrabajo} onChange={(e) => set("tipoTrabajo", e.target.value)}>{cat.tipos.map((t) => <option key={t}>{t}</option>)}</select></Field>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Field label="Entidad"><select className={inp} value={f.entidad} onChange={(e) => set("entidad", e.target.value)}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Área *"><select className={reqCls(f.area)} value={f.area} onChange={(e) => { set("area", e.target.value); set("subcategoria", ""); }}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Subcategoría"><select className={inp} value={f.subcategoria} onChange={(e) => set("subcategoria", e.target.value)}><option value="">—</option>{subcatsArea.map((x) => <option key={x}>{x}</option>)}</select></Field>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Field label="Prioridad *"><select className={reqCls(f.prioridad)} value={f.prioridad} onChange={(e) => set("prioridad", e.target.value)}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Fecha de solicitud *"><input type="date" className={reqCls(f.fechaSolicitud)} value={f.fechaSolicitud} onChange={(e) => set("fechaSolicitud", e.target.value)} /></Field>
               <Field label="Fecha tope"><input type="date" className={inp} value={f.fechaTope} onChange={(e) => set("fechaTope", e.target.value)} /></Field>
@@ -1000,8 +1000,8 @@ export default function CentroDeMando({ session, onSignOut }) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-2 sm:flex-nowrap sm:gap-3">
           <img src={LOGO} alt="Guayaquil City F.C." className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold leading-tight text-white sm:text-base">Centro de Mando</h1>
-            <p className="truncate text-[10px] uppercase tracking-widest sm:text-[11px]" style={{ color: "#7fb3e0" }}>Guayaquil City F.C.</p>
+            <h1 className="truncate text-[13px] font-semibold leading-tight text-white sm:text-base">Centro de Mando</h1>
+            <p className="truncate text-[10px] uppercase tracking-widest sm:text-[11px]" style={{ color: "#7fb3e0" }}><span className="sm:hidden">GCFC</span><span className="hidden sm:inline">Guayaquil City F.C.</span></p>
           </div>
           <div className="hidden items-center gap-1.5 sm:flex">
             <span className="text-[11px] text-white/60">Yo soy:</span>
