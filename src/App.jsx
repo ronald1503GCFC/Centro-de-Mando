@@ -209,10 +209,10 @@ function diffEventos(viejo, nuevo, actor, nombre) {
   return out;
 }
 
-const inp = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-300";
+const inp = "w-full min-w-0 box-border rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-300";
 function Pill({ children, className, style }) { return <span style={style} className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${className || ""}`}>{children}</span>; }
 function Field({ label, children }) { return <label className="flex h-full flex-col"><span className="mb-1 block text-xs font-medium text-slate-500">{label}</span><span className="mt-auto block">{children}</span></label>; }
-const optInp = "w-full rounded-lg border border-emerald-200 bg-emerald-50/40 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300";
+const optInp = "w-full min-w-0 box-border rounded-lg border border-emerald-200 bg-emerald-50/40 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-300";
 function FieldOpt({ label, children }) { return <label className="flex h-full flex-col"><span className="mb-1 block text-xs font-medium text-slate-400">{label} <span className="font-normal text-emerald-600">(opcional)</span></span><span className="mt-auto block">{children}</span></label>; }
 const reqCls = (v) => `${inp}${!v || (typeof v === "string" && !v.trim()) ? " border-rose-300 bg-rose-50/40" : ""}`;
 function EntBadge({ ent }) { return <Pill style={{ backgroundColor: ENT_COLOR[ent], color: "#fff" }}>{ent}</Pill>; }
@@ -997,25 +997,21 @@ export default function CentroDeMando({ session, onSignOut }) {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <div className="w-full px-2 py-2" style={{ background: NAVY }}>
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-2 sm:flex-row sm:items-center sm:gap-3">
-          <div className="flex min-w-0 items-center gap-2 sm:flex-1">
-            <img src={LOGO} alt="Guayaquil City F.C." className="h-9 w-9 shrink-0" />
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold leading-tight text-white">Centro de Mando</h1>
-              <p className="truncate text-[10px] uppercase tracking-widest sm:text-[11px]" style={{ color: "#7fb3e0" }}>Guayaquil City F.C.</p>
-            </div>
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-2 sm:gap-3">
+          <img src={LOGO} alt="Guayaquil City F.C." className="h-9 w-9 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-semibold leading-tight text-white">GCFC</h1>
+            <p className="truncate text-[9px] uppercase tracking-widest sm:text-[11px]" style={{ color: "#7fb3e0" }}>Centro de Mando</p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <div className="hidden items-center gap-1.5 sm:flex">
-              <span className="text-[11px] text-white/60">Yo soy:</span>
-              <select value={actor} onChange={(e) => setActor(e.target.value)} className="rounded-md bg-white/10 px-2 py-1.5 text-xs text-white outline-none">
-                {(cat?.personas || []).map((p) => <option key={p.id} value={p.id} className="text-slate-800">{p.nombre}</option>)}
-              </select>
-            </div>
-            <button onClick={() => setQuick(true)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 hover:bg-white/10 sm:flex-none sm:px-3"><Clock size={15} />Rápida</button>
-            <button onClick={() => setModal({ a: null })} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-2 text-sm font-medium text-white hover:bg-white/20 sm:flex-none sm:px-3"><Plus size={16} />Nueva</button>
-            <button onClick={onSignOut} title={session?.user?.email || "Cerrar sesión"} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-white/70 hover:bg-white/10 hover:text-white">Salir</button>
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <span className="text-[11px] text-white/60">Yo soy:</span>
+            <select value={actor} onChange={(e) => setActor(e.target.value)} className="rounded-md bg-white/10 px-2 py-1.5 text-xs text-white outline-none">
+              {(cat?.personas || []).map((p) => <option key={p.id} value={p.id} className="text-slate-800">{p.nombre}</option>)}
+            </select>
           </div>
+          <button onClick={() => setQuick(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 hover:bg-white/10 sm:px-3"><Clock size={15} />Rápida</button>
+          <button onClick={() => setModal({ a: null })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-2 text-sm font-medium text-white hover:bg-white/20 sm:px-3"><Plus size={16} />Nueva</button>
+          <button onClick={onSignOut} title={session?.user?.email || "Cerrar sesión"} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-white/70 hover:bg-white/10 hover:text-white">Salir</button>
         </div>
       </div>
 
