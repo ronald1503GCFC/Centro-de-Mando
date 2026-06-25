@@ -58,6 +58,8 @@ const GRUPOS_DEFAULT = [
   { id: "g_com", nombre: "Comercial / Patrocinios" },
   { id: "g_mkt", nombre: "Marketing / Marca" },
 ];
+// Tipos de contacto externo (gente con la que se hace gestión, pero que NO usa el sistema)
+const TIPOS_CONTACTO_DEFAULT = ["Presidente", "Gerente General", "Cuerpo Técnico", "Jugadores", "LigaPro", "Patrocinadores"];
 
 const SEED = {
   catalogos: {
@@ -69,10 +71,13 @@ const SEED = {
       { id: "asisadm", nombre: "Asist. Administrativa", rol: "Administración Cantera" },
       { id: "coordadm", nombre: "Coord. Administrativo", rol: "Administración Cantera" },
       { id: "coorddep", nombre: "Coord. Deportivo", rol: "Administración Cantera" },
-      { id: "presid", nombre: "Presidencia", rol: "Solicitante" },
-      { id: "geren", nombre: "Gerencia General", rol: "Solicitante" },
-      { id: "ct", nombre: "Cuerpo Técnico", rol: "Solicitante" },
     ],
+    contactos: [
+      { id: "presid", nombre: "Presidencia", tipo: "Presidente" },
+      { id: "geren", nombre: "Gerencia General", tipo: "Gerente General" },
+      { id: "ct", nombre: "Cuerpo Técnico", tipo: "Cuerpo Técnico" },
+    ],
+    tiposContacto: TIPOS_CONTACTO_DEFAULT,
     proyectos: [
       { id: "p1", nombre: "Presentaciones primer equipo 2026", entidad: "Primer Equipo", descripcion: "Anuncios de fichajes y renovaciones" },
       { id: "p2", nombre: "Captación academia 2026", entidad: "La Cantera", descripcion: "Campaña de inscripciones" },
@@ -656,7 +661,7 @@ function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, on
   const vacio = {
     titulo: "", descripcion: "", proyectoId: "", entidad: "", area: "", subcategoria: "",
     tipoTrabajo: "", prioridad: "", fechaSolicitud: HOY.toISOString().slice(0, 10), fechaTope: "", solicitanteId: "",
-    responsableId: "", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], subtareas: [], eventos: [], privada: false,
+    responsableId: "", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], contrapartes: [], subtareas: [], eventos: [], privada: false,
   };
   const [f, setF] = useState(inicial ? { ...vacio, ...inicial } : vacio);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -664,6 +669,8 @@ function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, on
   const tieneSub = f.subtareas.length > 0;
   const valido = f.titulo.trim() && f.entidad && f.area && f.prioridad && f.fechaSolicitud && f.responsableId;
   const personasSel = cat.personas;
+  const contactos = cat.contactos || [];
+  const toggleContra = (id) => setF((p) => ({ ...p, contrapartes: (p.contrapartes || []).includes(id) ? p.contrapartes.filter((x) => x !== id) : [...(p.contrapartes || []), id] }));
   const setSub = (i, k, v) => setF((p) => { const ns = [...p.subtareas]; ns[i] = { ...ns[i], [k]: v }; return { ...p, subtareas: ns }; });
   const addSub = () => setF((p) => ({ ...p, subtareas: [...p.subtareas, { id: "s" + Date.now(), titulo: "", duenoId: "dis", miFuncion: "Ejecuto", fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] }] }));
   const delSub = (i) => setF((p) => ({ ...p, subtareas: p.subtareas.filter((_, x) => x !== i) }));
@@ -724,7 +731,7 @@ function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, on
               <Field label="Fecha tope"><input type="date" className={inp} value={f.fechaTope} onChange={(e) => set("fechaTope", e.target.value)} /></Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Nace de (solicitante)"><select className={inp} value={f.solicitanteId} onChange={(e) => set("solicitanteId", e.target.value)}><option value="">—</option>{personasSel.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
+              <Field label="Nace de (solicitante)"><select className={inp} value={f.solicitanteId} onChange={(e) => set("solicitanteId", e.target.value)}><option value="">—</option><optgroup label="Equipo">{personasSel.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</optgroup>{contactos.length > 0 && <optgroup label="Externos">{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</optgroup>}</select></Field>
               <Field label="Asignado a / Responsable *"><select className={reqCls(f.responsableId)} value={f.responsableId} onChange={(e) => set("responsableId", e.target.value)}><option value="">—</option>{personasSel.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
             </div>
             {!tieneSub && (
@@ -741,6 +748,15 @@ function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, on
                 {personasSel.map((p) => <button key={p.id} onClick={() => toggleInv(p.id)} className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${f.involucrados.includes(p.id) ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>{p.nombre}</button>)}
               </div>
             </div>
+            {contactos.length > 0 && (
+              <div>
+                <span className="mb-1 block text-xs font-medium text-slate-500">Gestión con <span className="font-normal text-slate-400">(contraparte externa, opcional)</span></span>
+                <div className="flex flex-wrap gap-1.5">
+                  {contactos.map((c) => <button key={c.id} onClick={() => toggleContra(c.id)} className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${(f.contrapartes || []).includes(c.id) ? "bg-sky-600 text-white" : "bg-sky-50 text-sky-700 hover:bg-sky-100"}`}>{c.nombre}</button>)}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Externos con los que se hace la gestión (no usan el sistema, no son responsables).</p>
+              </div>
+            )}
             <div className="rounded-lg border border-slate-200 p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-700">Subtareas (proceso)</span>
@@ -815,6 +831,9 @@ function Catalogos({ cat, setCat }) {
   const [nP, setNP] = useState({ nombre: "", rol: "" });
   const [nPr, setNPr] = useState({ nombre: "", entidad: "Primer Equipo", descripcion: "" });
   const [nS, setNS] = useState(""); const [nT, setNT] = useState("");
+  const [nC, setNC] = useState({ nombre: "", tipo: "" }); const [nTC, setNTC] = useState("");
+  const contactos = cat.contactos || [];
+  const tiposContacto = cat.tiposContacto || TIPOS_CONTACTO_DEFAULT;
   const upd = (parcial) => setCat({ ...cat, ...parcial });
   const grupos = cat.grupos || GRUPOS_DEFAULT;
   const verGrupos = cat.verGrupos || {};
@@ -891,7 +910,43 @@ function Catalogos({ cat, setCat }) {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><FileStack size={15} className="text-slate-400" />Proyectos</p>
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><User size={15} className="text-slate-400" />Contactos externos</p>
+        <p className="mb-3 text-xs text-slate-400">Gente con la que se hace gestión pero que NO usa el sistema (presidente, cuerpo técnico, jugadores, patrocinadores…). Aparecen en las actividades como contraparte o solicitante, nunca como responsables ni con login.</p>
+        <div className="space-y-2">
+          {contactos.map((c, i) => (
+            <div key={c.id} className="flex items-start gap-2">
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre" value={c.nombre} onChange={(e) => { const a = [...contactos]; a[i] = { ...c, nombre: e.target.value }; upd({ contactos: a }); }} />
+                <select className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs text-slate-600 sm:w-48" value={c.tipo} onChange={(e) => { const a = [...contactos]; a[i] = { ...c, tipo: e.target.value }; upd({ contactos: a }); }}>
+                  <option value="">— Tipo —</option>
+                  {tiposContacto.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <button onClick={() => upd({ contactos: contactos.filter((x) => x.id !== c.id) })} className="mt-1 shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
+            </div>
+          ))}
+          {contactos.length === 0 && <p className="py-2 text-center text-xs text-slate-400">Sin contactos externos aún.</p>}
+        </div>
+        <div className="mt-3 flex items-start gap-2 border-t border-slate-100 pt-3">
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre (ej.: Presidente, Marathon, Liga Pro)" value={nC.nombre} onChange={(e) => setNC({ ...nC, nombre: e.target.value })} />
+            <select className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs sm:w-48" value={nC.tipo} onChange={(e) => setNC({ ...nC, tipo: e.target.value })}>
+              <option value="">— Tipo —</option>
+              {tiposContacto.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <button onClick={() => { if (nC.nombre.trim()) { upd({ contactos: [...contactos, { id: "c" + Date.now(), nombre: nC.nombre.trim(), tipo: nC.tipo }] }); setNC({ nombre: "", tipo: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
+        </div>
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[11px] font-medium text-slate-500">Tipos de contacto</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {tiposContacto.map((t) => (
+              <span key={t} className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pl-3 pr-1.5 text-xs text-slate-600">{t}<button onClick={() => upd({ tiposContacto: tiposContacto.filter((x) => x !== t) })} className="rounded-full p-0.5 hover:bg-slate-300"><X size={12} /></button></span>
+            ))}
+            <input className="w-40 rounded border border-slate-200 px-2 py-1 text-xs" placeholder="Nuevo tipo + Enter" value={nTC} onChange={(e) => setNTC(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nTC.trim() && !tiposContacto.includes(nTC.trim())) { upd({ tiposContacto: [...tiposContacto, nTC.trim()] }); setNTC(""); } }} />
+          </div>
+        </div>
+      </div>
         <div className="space-y-2">
           {cat.proyectos.map((p, i) => (
             <div key={p.id} className="flex items-start gap-2">
@@ -1036,7 +1091,7 @@ export default function CentroDeMando({ session, onSignOut }) {
   const persist = (next) => { const prev = dbRef.current; dbRef.current = next; setDb(next); sincronizar(prev, next); };
   const cat = db?.catalogos;
   const acts = db?.actividades || [];
-  const nombre = (id) => (id === "externo" ? "Tercero" : (cat?.personas.find((p) => p.id === id)?.nombre || "—"));
+  const nombre = (id) => (id === "externo" ? "Tercero" : (cat?.personas.find((p) => p.id === id)?.nombre || cat?.contactos?.find((c) => c.id === id)?.nombre || "—"));
 
   // ── Identidad y permisos ──
   const ADMIN_EMAIL = "ronald.miranda@guayaquilcityfc.com";
