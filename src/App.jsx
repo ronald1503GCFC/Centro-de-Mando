@@ -526,7 +526,7 @@ function PorPersona({ units, personas, nombre, onOpen }) {
 }
 
 // Bitácora dentro del modal
-function Bitacora({ live, nombre, onAvance }) {
+function Bitacora({ live, nombre, onAvance, soloLectura }) {
   const [subSel, setSubSel] = useState("");
   const [texto, setTexto] = useState("");
   const timeline = [];
@@ -547,6 +547,7 @@ function Bitacora({ live, nombre, onAvance }) {
         <div className="flex-1 rounded-lg bg-slate-50 p-3"><p className="text-[11px] uppercase tracking-wide text-slate-400">En estado actual hace</p><p className="text-lg font-semibold text-slate-800">{enEstado} días</p></div>
       </div>
 
+      {!soloLectura && (
       <div className="rounded-lg border border-slate-200 p-3">
         <p className="mb-2 text-xs font-semibold text-slate-700">Registrar avance / gestión</p>
         <div className="flex flex-col gap-2">
@@ -560,6 +561,7 @@ function Bitacora({ live, nombre, onAvance }) {
           <button onClick={registrar} className="self-end rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">Registrar</button>
         </div>
       </div>
+      )}
 
       <div>
         <p className="mb-2 text-xs font-semibold text-slate-700">Historial</p>
@@ -604,7 +606,7 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
         </div>
         <p className="mb-4 text-xs text-slate-400">Elige una plantilla y ponle nombre. La plantilla precarga entidad, área, responsable y subtareas.</p>
         {!hayPlantillas ? (
-          <p className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-700">No tienes plantillas aún. Créalas en <b>Catálogos → Plantillas de tarea</b> para usar la captura rápida, o usa "Nueva" para una actividad completa.</p>
+          <p className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-700">Aún no tienes plantillas. Créalas en la pestaña <b>Plantillas</b> para usar la captura rápida, o usa "Nueva" para una actividad completa.</p>
         ) : (
           <div className="space-y-3">
             <Field label="Título *"><input autoFocus className={inp} value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") crear(); }} placeholder="Ej.: Story Juan Pérez vs Emelec" /></Field>
@@ -633,13 +635,13 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
   );
 }
 
-function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance, onDuplicar, onEliminar }) {
+function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, onClose, onAvance, onDuplicar, onEliminar, soloLectura, esAdmin }) {
   const esNuevo = !inicial;
   const [vista, setVista] = useState("datos");
   const vacio = {
     titulo: "", descripcion: "", proyectoId: "", entidad: "", area: "", subcategoria: "",
     tipoTrabajo: "", prioridad: "", fechaSolicitud: HOY.toISOString().slice(0, 10), fechaTope: "", solicitanteId: "",
-    responsableId: "", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], subtareas: [], eventos: [],
+    responsableId: "", estado: "porhacer", proxAccion: "", proxRespId: "", esperaDe: "", involucrados: [], subtareas: [], eventos: [], privada: false,
   };
   const [f, setF] = useState(inicial ? { ...vacio, ...inicial } : vacio);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -662,8 +664,8 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-900">{esNuevo ? "Nueva actividad" : "Actividad"}</h2>
           <div className="flex items-center gap-1">
-            {!esNuevo && <button onClick={() => onDuplicar(f)} title="Duplicar" className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Copy size={16} /></button>}
-            {!esNuevo && <button onClick={() => onEliminar(f.id)} title="Eliminar" className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>}
+            {!esNuevo && !soloLectura && <button onClick={() => onDuplicar(f)} title="Duplicar" className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Copy size={16} /></button>}
+            {!esNuevo && !soloLectura && <button onClick={() => onEliminar(f.id)} title="Eliminar" className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>}
             <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X size={18} /></button>
           </div>
         </div>
@@ -677,14 +679,16 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
         )}
 
         {vista === "bitacora" && live ? (
-          <Bitacora live={live} nombre={nombre} onAvance={(subId, texto) => onAvance(f.id, subId, texto)} />
+          <Bitacora live={live} nombre={nombre} soloLectura={soloLectura} onAvance={(subId, texto) => onAvance(f.id, subId, texto)} />
         ) : (
           <div className="space-y-3">
-            {esNuevo && (cat.plantillasTarea || []).length > 0 && (
+            {soloLectura && <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-500">Solo lectura — no eres responsable de esta actividad ni de sus subtareas. Puedes verla, pero no editarla.</div>}
+            <fieldset disabled={soloLectura} className="m-0 min-w-0 space-y-3 border-0 p-0">
+            {esNuevo && (plantillasMias || []).length > 0 && (
               <Field label="Cargar plantilla (opcional)">
-                <select className={`${inp} bg-sky-50`} value="" onChange={(e) => { const t = (cat.plantillasTarea || []).find((x) => x.id === e.target.value); if (t) aplicarPlantillaTarea(t); }}>
+                <select className={`${inp} bg-sky-50`} value="" onChange={(e) => { const t = (plantillasMias || []).find((x) => x.id === e.target.value); if (t) aplicarPlantillaTarea(t); }}>
                   <option value="">— Empezar en blanco —</option>
-                  {(cat.plantillasTarea || []).map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  {(plantillasMias || []).map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                 </select>
               </Field>
             )}
@@ -766,11 +770,24 @@ function ModalActividad({ inicial, live, cat, nombre, onSave, onClose, onAvance,
                 )}
               </div>
             )}
-            <div className="flex items-center justify-end gap-3 pt-1">
-              {!valido && <span className="text-[11px] text-rose-500">Completa los campos marcados con *</span>}
-              <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100">Cancelar</button>
-              <button onClick={() => valido && onSave(f, esNuevo && guardarPlantilla ? { nombre: nombrePlantilla } : null)} disabled={!valido} className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${valido ? "bg-slate-900 hover:bg-slate-800" : "cursor-not-allowed bg-slate-300"}`}>{esNuevo ? "Crear actividad" : "Guardar cambios"}</button>
-            </div>
+            {esAdmin && (
+              <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-700">
+                <input type="checkbox" checked={!!f.privada} onChange={(e) => set("privada", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-sky-600" />
+                Privada — solo el administrador puede verla
+              </label>
+            )}
+            </fieldset>
+            {soloLectura ? (
+              <div className="flex justify-end pt-1">
+                <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100">Cerrar</button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-end gap-3 pt-1">
+                {!valido && <span className="text-[11px] text-rose-500">Completa los campos marcados con *</span>}
+                <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100">Cancelar</button>
+                <button onClick={() => valido && onSave(f, esNuevo && guardarPlantilla ? { nombre: nombrePlantilla } : null)} disabled={!valido} className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${valido ? "bg-slate-900 hover:bg-slate-800" : "cursor-not-allowed bg-slate-300"}`}>{esNuevo ? "Crear actividad" : "Guardar cambios"}</button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -783,21 +800,40 @@ function Catalogos({ cat, setCat }) {
   const [nP, setNP] = useState({ nombre: "", rol: "" });
   const [nPr, setNPr] = useState({ nombre: "", entidad: "Primer Equipo", descripcion: "" });
   const [nS, setNS] = useState(""); const [nT, setNT] = useState("");
-  const [nPl, setNPl] = useState({ nombre: "", entidad: "Primer Equipo", area: "Marketing", subcategoria: "", tipoTrabajo: "Pieza de contenido", prioridad: "Media", responsableId: "dis", conSubtareas: false });
   const upd = (parcial) => setCat({ ...cat, ...parcial });
-  const plantillas = cat.plantillasTarea || [];
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><Users size={15} className="text-slate-400" />Personas</p>
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Users size={15} className="text-slate-400" />Visibilidad del equipo</p>
+        <p className="mb-3 text-xs text-slate-400">Define qué pueden ver los miembros (no aplica al administrador, que siempre ve todo).</p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {[["todos", "Todos ven todo", "Cada quien ve las actividades de todos."], ["solo", "Cada quien ve solo lo suyo", "Un miembro solo ve las actividades donde es responsable o tiene una subtarea."]].map(([id, t, d]) => (
+            <button key={id} onClick={() => upd({ visibilidad: id })} className={`flex-1 rounded-lg border p-3 text-left transition ${ (cat.visibilidad || "todos") === id ? "border-sky-400 bg-sky-50" : "border-slate-200 hover:border-slate-300" }`}>
+              <p className="text-sm font-medium text-slate-800">{t}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{d}</p>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">Las actividades marcadas como "Privada" solo las ve el administrador, en cualquiera de los dos modos.</p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Users size={15} className="text-slate-400" />Personas</p>
+        <p className="mb-3 text-xs text-slate-400">El correo vincula a cada persona con su inicio de sesión. Marca "Administrador" a quien deba ver y editar todo.</p>
         <div className="space-y-2">
           {cat.personas.map((p, i) => (
-            <div key={p.id} className="flex items-start gap-2">
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" value={p.nombre} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, nombre: e.target.value }; upd({ personas: a }); }} />
-                <input className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs text-slate-500 sm:w-44" value={p.rol} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, rol: e.target.value }; upd({ personas: a }); }} />
+            <div key={p.id} className="rounded-lg border border-slate-100 p-2">
+              <div className="flex items-start gap-2">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                  <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre" value={p.nombre} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, nombre: e.target.value }; upd({ personas: a }); }} />
+                  <input className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs text-slate-500 sm:w-44" placeholder="Rol" value={p.rol} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, rol: e.target.value }; upd({ personas: a }); }} />
+                </div>
+                <button onClick={() => upd({ personas: cat.personas.filter((x) => x.id !== p.id) })} className="mt-1 shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
               </div>
-              <button onClick={() => upd({ personas: cat.personas.filter((x) => x.id !== p.id) })} className="mt-1 shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input type="email" className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-xs" placeholder="correo@guayaquilcityfc.com (para iniciar sesión)" value={p.email || ""} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, email: e.target.value }; upd({ personas: a }); }} />
+                <label className="inline-flex shrink-0 items-center gap-1.5 px-1 text-xs text-slate-500"><input type="checkbox" checked={!!p.admin} onChange={(e) => { const a = [...cat.personas]; a[i] = { ...p, admin: e.target.checked }; upd({ personas: a }); }} className="h-3.5 w-3.5" />Administrador</label>
+              </div>
             </div>
           ))}
         </div>
@@ -806,7 +842,7 @@ function Catalogos({ cat, setCat }) {
             <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre" value={nP.nombre} onChange={(e) => setNP({ ...nP, nombre: e.target.value })} />
             <input className="w-full rounded border border-slate-200 px-2 py-1.5 text-xs sm:w-44" placeholder="Rol" value={nP.rol} onChange={(e) => setNP({ ...nP, rol: e.target.value })} />
           </div>
-          <button onClick={() => { if (nP.nombre.trim()) { upd({ personas: [...cat.personas, { id: "u" + Date.now(), nombre: nP.nombre, rol: nP.rol }] }); setNP({ nombre: "", rol: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
+          <button onClick={() => { if (nP.nombre.trim()) { upd({ personas: [...cat.personas, { id: "u" + Date.now(), nombre: nP.nombre, rol: nP.rol, email: "", admin: false }] }); setNP({ nombre: "", rol: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
         </div>
       </div>
 
@@ -858,40 +894,51 @@ function Catalogos({ cat, setCat }) {
           <button onClick={() => { if (nT.trim() && !cat.tipos.includes(nT.trim())) { upd({ tipos: [...cat.tipos, nT.trim()] }); setNT(""); } }} className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Copy size={15} className="text-slate-400" />Plantillas de tarea</p>
-        <p className="mb-3 text-xs text-slate-400">Moldes con campos precargados. Se usan desde el botón "Nueva" → "Cargar plantilla".</p>
-        <div className="space-y-2">
-          {plantillas.map((t, i) => (
-            <div key={t.id} className="rounded-lg bg-slate-50 p-2.5">
-              <div className="flex items-center gap-2">
-                <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" value={t.nombre} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, nombre: e.target.value }; upd({ plantillasTarea: a }); }} />
-                <button onClick={() => upd({ plantillasTarea: plantillas.filter((x) => x.id !== t.id) })} className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.entidad} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, entidad: e.target.value }; upd({ plantillasTarea: a }); }}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
-                <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.area} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, area: e.target.value, subcategoria: "" }; upd({ plantillasTarea: a }); }}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
-                <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.tipoTrabajo} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, tipoTrabajo: e.target.value }; upd({ plantillasTarea: a }); }}>{cat.tipos.map((x) => <option key={x}>{x}</option>)}</select>
-                <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.prioridad} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, prioridad: e.target.value }; upd({ plantillasTarea: a }); }}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select>
-                <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.responsableId} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, responsableId: e.target.value }; upd({ plantillasTarea: a }); }}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
-                <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={!!t.conSubtareas} onChange={(e) => { const a = [...plantillas]; a[i] = { ...t, conSubtareas: e.target.checked }; upd({ plantillasTarea: a }); }} className="h-3.5 w-3.5" />proceso</label>
-              </div>
+function Plantillas({ cat, setCat, actor }) {
+  const [nPl, setNPl] = useState({ nombre: "", entidad: "Primer Equipo", area: "Marketing", subcategoria: "", tipoTrabajo: "Pieza de contenido", prioridad: "Media", responsableId: "dis", conSubtareas: false });
+  const upd = (parcial) => setCat({ ...cat, ...parcial });
+  const plantillas = cat.plantillasTarea || [];
+  const dueno = (t) => t.duenoId || "ronald"; // las de ejemplo (sin dueño) son del admin
+  const mias = plantillas.filter((t) => dueno(t) === actor);
+  const updT = (id, patch) => upd({ plantillasTarea: plantillas.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
+  const delT = (id) => upd({ plantillasTarea: plantillas.filter((t) => t.id !== id) });
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Copy size={15} className="text-slate-400" />Mis plantillas</p>
+      <p className="mb-3 text-xs text-slate-400">Moldes con tus campos repetitivos. Son personales: solo tú las ves y las usas en la captura rápida y en "Nueva" → "Cargar plantilla".</p>
+      <div className="space-y-2">
+        {mias.map((t) => (
+          <div key={t.id} className="rounded-lg bg-slate-50 p-2.5">
+            <div className="flex items-center gap-2">
+              <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" value={t.nombre} onChange={(e) => updT(t.id, { nombre: e.target.value })} />
+              <button onClick={() => delT(t.id)} className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
             </div>
-          ))}
-          {plantillas.length === 0 && <p className="py-2 text-center text-xs text-slate-400">Sin plantillas aún.</p>}
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.entidad} onChange={(e) => updT(t.id, { entidad: e.target.value })}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
+              <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.area} onChange={(e) => updT(t.id, { area: e.target.value, subcategoria: "" })}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
+              <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.tipoTrabajo} onChange={(e) => updT(t.id, { tipoTrabajo: e.target.value })}>{cat.tipos.map((x) => <option key={x}>{x}</option>)}</select>
+              <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.prioridad} onChange={(e) => updT(t.id, { prioridad: e.target.value })}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select>
+              <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.responsableId} onChange={(e) => updT(t.id, { responsableId: e.target.value })}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
+              <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={!!t.conSubtareas} onChange={(e) => updT(t.id, { conSubtareas: e.target.checked })} className="h-3.5 w-3.5" />proceso</label>
+            </div>
+          </div>
+        ))}
+        {mias.length === 0 && <p className="py-2 text-center text-xs text-slate-400">Aún no tienes plantillas. Crea una abajo.</p>}
+      </div>
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <div className="flex items-center gap-2">
+          <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre de la plantilla" value={nPl.nombre} onChange={(e) => setNPl({ ...nPl, nombre: e.target.value })} />
+          <button onClick={() => { if (nPl.nombre.trim()) { upd({ plantillasTarea: [...plantillas, { id: "t" + Date.now(), ...nPl, duenoId: actor }] }); setNPl({ ...nPl, nombre: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
         </div>
-        <div className="mt-3 border-t border-slate-100 pt-3">
-          <div className="flex items-center gap-2">
-            <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre de la plantilla" value={nPl.nombre} onChange={(e) => setNPl({ ...nPl, nombre: e.target.value })} />
-            <button onClick={() => { if (nPl.nombre.trim()) { upd({ plantillasTarea: [...plantillas, { id: "t" + Date.now(), ...nPl }] }); setNPl({ ...nPl, nombre: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.entidad} onChange={(e) => setNPl({ ...nPl, entidad: e.target.value })}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
-            <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.area} onChange={(e) => setNPl({ ...nPl, area: e.target.value })}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
-            <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.responsableId} onChange={(e) => setNPl({ ...nPl, responsableId: e.target.value })}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
-            <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={nPl.conSubtareas} onChange={(e) => setNPl({ ...nPl, conSubtareas: e.target.checked })} className="h-3.5 w-3.5" />proceso</label>
-          </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.entidad} onChange={(e) => setNPl({ ...nPl, entidad: e.target.value })}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
+          <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.area} onChange={(e) => setNPl({ ...nPl, area: e.target.value })}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
+          <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.responsableId} onChange={(e) => setNPl({ ...nPl, responsableId: e.target.value })}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
+          <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={nPl.conSubtareas} onChange={(e) => setNPl({ ...nPl, conSubtareas: e.target.checked })} className="h-3.5 w-3.5" />proceso</label>
         </div>
       </div>
     </div>
@@ -906,7 +953,6 @@ export default function CentroDeMando({ session, onSignOut }) {
   const [modal, setModal] = useState(null);
   const [aEliminar, setAEliminar] = useState(null);
   const [dia, setDia] = useState(null);
-  const [actor, setActor] = useState("ronald");
   const [kpiSel, setKpiSel] = useState(null);
   const [quick, setQuick] = useState(false);
 
@@ -931,15 +977,28 @@ export default function CentroDeMando({ session, onSignOut }) {
   const acts = db?.actividades || [];
   const nombre = (id) => (id === "externo" ? "Tercero" : (cat?.personas.find((p) => p.id === id)?.nombre || "—"));
 
-  const actsF = useMemo(() => acts.filter((a) => entidad === "Todos" || a.entidad === entidad), [acts, entidad]);
-  const units = useMemo(() => buildUnits(actsF), [actsF]);
-  const vencidasTot = useMemo(() => buildUnits(acts).filter(venc).length, [acts]);
+  // ── Identidad y permisos ──
+  const ADMIN_EMAIL = "ronald.miranda@guayaquilcityfc.com";
+  const correo = (session?.user?.email || "").toLowerCase();
+  const yo = (cat?.personas || []).find((p) => (p.email || "").toLowerCase() === correo) || null;
+  const esAdmin = (yo?.admin === true) || (correo === ADMIN_EMAIL);
+  const actor = yo?.id || (esAdmin ? "ronald" : "anon");
+  const visibilidad = cat?.visibilidad || "todos"; // "todos" | "solo"
+  const participo = (a) => !!yo && (a.responsableId === yo.id || (a.subtareas || []).some((s) => s.duenoId === yo.id));
+  const puedeVer = (a) => esAdmin ? true : (a.privada ? false : (visibilidad === "solo" ? participo(a) : true));
+  const puedeEditar = (a) => esAdmin || participo(a);
+
+  const actsVis = acts.filter(puedeVer);
+  const actsF = actsVis.filter((a) => entidad === "Todos" || a.entidad === entidad);
+  const units = buildUnits(actsF);
+  const vencidasTot = buildUnits(actsVis).filter(venc).length;
+  const misPlantillas = (cat?.plantillasTarea || []).filter((t) => (t.duenoId || "ronald") === actor);
 
   const crear = (a, plantillaReq) => {
     const c = diffEventos(null, { ...a, id: Date.now() }, actor, nombre);
     let next = { ...db, actividades: [...acts, c] };
     if (plantillaReq) {
-      const nuevaPl = { id: "t" + Date.now(), nombre: (plantillaReq.nombre || "").trim() || `${a.area} · ${a.tipoTrabajo}`, entidad: a.entidad, area: a.area, subcategoria: a.subcategoria || "", tipoTrabajo: a.tipoTrabajo, prioridad: a.prioridad, responsableId: a.responsableId, conSubtareas: (a.subtareas || []).length > 0 };
+      const nuevaPl = { id: "t" + Date.now(), nombre: (plantillaReq.nombre || "").trim() || `${a.area} · ${a.tipoTrabajo}`, entidad: a.entidad, area: a.area, subcategoria: a.subcategoria || "", tipoTrabajo: a.tipoTrabajo, prioridad: a.prioridad, responsableId: a.responsableId, conSubtareas: (a.subtareas || []).length > 0, duenoId: actor };
       next = { ...next, catalogos: { ...db.catalogos, plantillasTarea: [...(db.catalogos.plantillasTarea || []), nuevaPl] } };
     }
     persist(next); setModal(null);
@@ -948,6 +1007,8 @@ export default function CentroDeMando({ session, onSignOut }) {
   const eliminar = (id) => { persist({ ...db, actividades: acts.filter((x) => x.id !== id) }); setAEliminar(null); setModal(null); };
   const setCat = (nc) => persist({ ...db, catalogos: nc });
   const mover = (u, nuevo) => {
+    const act = acts.find((a) => a.id === u.actId);
+    if (act && !puedeEditar(act)) return;
     persist({ ...db, actividades: acts.map((a) => {
       if (a.id !== u.actId) return a;
       if (u.subId) return { ...a, subtareas: a.subtareas.map((s) => (s.id === u.subId ? { ...s, estado: nuevo, eventos: [...(s.eventos || []), evt(actor, "estado", `${elabel(s.estado)} → ${elabel(nuevo)}`)] } : s)) };
@@ -979,7 +1040,7 @@ export default function CentroDeMando({ session, onSignOut }) {
     const c = diffEventos(null, { ...base, id: Date.now() }, actor, nombre);
     persist({ ...db, actividades: [...acts, c] }); setQuick(false);
   };
-  const abrir = (id) => { const a = acts.find((x) => x.id === id); if (a) setModal({ a }); };
+  const abrir = (id) => { const a = acts.find((x) => x.id === id); if (a) setModal({ a, soloLectura: !puedeEditar(a) }); };
   const live = modal && modal.a ? acts.find((x) => x.id === modal.a.id) : null;
 
   const tabs = [
@@ -987,7 +1048,8 @@ export default function CentroDeMando({ session, onSignOut }) {
     { id: "calendario", label: "Calendario", icon: Calendar },
     { id: "tablero", label: "Tablero", icon: LayoutGrid },
     { id: "persona", label: "Por persona", icon: Users },
-    { id: "catalogos", label: "Catálogos", icon: Database },
+    { id: "plantillas", label: "Plantillas", icon: Copy },
+    ...(esAdmin ? [{ id: "catalogos", label: "Catálogos", icon: Database }] : []),
   ];
 
   if (cargando) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-400">Cargando…</div>;
@@ -1002,10 +1064,8 @@ export default function CentroDeMando({ session, onSignOut }) {
             <p className="truncate text-[9px] uppercase tracking-widest sm:text-[11px]" style={{ color: "#7fb3e0" }}>Centro de Mando</p>
           </div>
           <div className="hidden items-center gap-1.5 sm:flex">
-            <span className="text-[11px] text-white/60">Yo soy:</span>
-            <select value={actor} onChange={(e) => setActor(e.target.value)} className="rounded-md bg-white/10 px-2 py-1.5 text-xs text-white outline-none">
-              {(cat?.personas || []).map((p) => <option key={p.id} value={p.id} className="text-slate-800">{p.nombre}</option>)}
-            </select>
+            <span className="rounded-md bg-white/10 px-2 py-1.5 text-xs text-white">{yo ? yo.nombre : (session?.user?.email || "—")}</span>
+            {esAdmin && <span className="rounded-md bg-sky-500/30 px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100">Admin</span>}
           </div>
           <button onClick={() => setQuick(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 hover:bg-white/10 sm:px-3"><Clock size={15} />Rápida</button>
           <button onClick={() => setModal({ a: null })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-2 text-sm font-medium text-white hover:bg-white/20 sm:px-3"><Plus size={16} />Nueva</button>
@@ -1040,13 +1100,14 @@ export default function CentroDeMando({ session, onSignOut }) {
         {tab === "calendario" && <Calendario units={units} onDia={setDia} />}
         {tab === "tablero" && <Kanban units={units} nombre={nombre} onOpen={abrir} onMove={mover} />}
         {tab === "persona" && <PorPersona units={units} personas={cat.personas} nombre={nombre} onOpen={abrir} />}
-        {tab === "catalogos" && <Catalogos cat={cat} setCat={setCat} />}
+        {tab === "plantillas" && <Plantillas cat={cat} setCat={setCat} actor={actor} />}
+        {tab === "catalogos" && esAdmin && <Catalogos cat={cat} setCat={setCat} />}
 
         <p className="mt-6 text-center text-[11px] text-slate-400">Datos de ejemplo · edítalos o reemplázalos · todo se guarda automáticamente</p>
       </div>
 
-      {modal && <ModalActividad inicial={modal.a} live={live} cat={cat} nombre={nombre} onSave={modal.a ? editar : crear} onClose={() => setModal(null)} onAvance={registrarAvance} onDuplicar={duplicar} onEliminar={(id) => setAEliminar(id)} />}
-      {quick && <QuickAdd plantillas={cat.plantillasTarea || []} onCreate={quickCrear} onClose={() => setQuick(false)} />}
+      {modal && <ModalActividad inicial={modal.a} live={live} cat={cat} plantillasMias={misPlantillas} nombre={nombre} soloLectura={modal.soloLectura} esAdmin={esAdmin} onSave={modal.a ? editar : crear} onClose={() => setModal(null)} onAvance={registrarAvance} onDuplicar={duplicar} onEliminar={(id) => setAEliminar(id)} />}
+      {quick && <QuickAdd plantillas={misPlantillas} onCreate={quickCrear} onClose={() => setQuick(false)} />}
       {dia && <PanelDia date={dia} units={units} nombre={nombre} onClose={() => setDia(null)} onOpen={(id) => { setDia(null); abrir(id); }} onMove={mover} />}
 
       {aEliminar && (
