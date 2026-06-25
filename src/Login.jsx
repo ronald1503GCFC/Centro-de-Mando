@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "./supabaseClient";
+import { LOGO } from "./App";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -20,9 +21,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-lg">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: "#15294D" }}>
-            <span className="text-lg font-bold text-white">GC</span>
-          </div>
+          <img src={LOGO} alt="Guayaquil City F.C." className="mx-auto mb-3 h-16 w-16 object-contain" />
           <h1 className="text-lg font-semibold text-slate-900">Centro de Mando</h1>
           <p className="text-xs uppercase tracking-widest" style={{ color: "#1E6FA8" }}>Guayaquil City F.C.</p>
         </div>
