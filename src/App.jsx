@@ -47,6 +47,9 @@ const PLANTILLA_CONTENIDO = [
   { titulo: "Revisión y aprobación", duenoId: "ronald", miFuncion: "Apruebo" },
   { titulo: "Publicación", duenoId: "cont", miFuncion: "Ejecuto" },
 ];
+// Subtareas propias de la plantilla. Compatibilidad: plantillas viejas con conSubtareas usan el set de contenido.
+const plantillaSubs = (t) => Array.isArray(t.subtareasPlantilla) ? t.subtareasPlantilla : (t.conSubtareas ? PLANTILLA_CONTENIDO : []);
+const materializarSubs = (t) => plantillaSubs(t).map((s, i) => ({ id: "s" + Date.now() + i, titulo: s.titulo, duenoId: s.duenoId, miFuncion: s.miFuncion || "Ejecuto", fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] }));
 
 const SEED = {
   catalogos: {
@@ -616,7 +619,7 @@ function QuickAdd({ plantillas, onCreate, onClose }) {
                 {plantillas.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </Field>
-            {pl && <p className="-mt-1 text-[11px] text-slate-400">Precarga: {pl.entidad} · {pl.area} · {pl.tipoTrabajo}{pl.conSubtareas ? " · con proceso" : ""}.</p>}
+            {pl && <p className="-mt-1 text-[11px] text-slate-400">Precarga: {pl.entidad} · {pl.area} · {pl.tipoTrabajo}{plantillaSubs(pl).length ? ` · ${plantillaSubs(pl).length} subtareas` : ""}.</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Prioridad *"><select className={inp} value={prioridad} onChange={(e) => setPrioridad(e.target.value)}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Fecha tope (opcional)"><input type="date" className={inp} value={fechaTope} onChange={(e) => setFechaTope(e.target.value)} /></Field>
@@ -654,7 +657,7 @@ function ModalActividad({ inicial, live, cat, plantillasMias, nombre, onSave, on
   const delSub = (i) => setF((p) => ({ ...p, subtareas: p.subtareas.filter((_, x) => x !== i) }));
   const aplicarPlantilla = () => setF((p) => ({ ...p, subtareas: PLANTILLA_CONTENIDO.map((s, i) => ({ ...s, id: "s" + Date.now() + i, fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] })) }));
   const toggleInv = (id) => setF((p) => ({ ...p, involucrados: p.involucrados.includes(id) ? p.involucrados.filter((x) => x !== id) : [...p.involucrados, id] }));
-  const aplicarPlantillaTarea = (t) => setF((p) => ({ ...p, entidad: t.entidad, area: t.area, subcategoria: t.subcategoria, tipoTrabajo: t.tipoTrabajo, prioridad: t.prioridad, responsableId: t.responsableId, subtareas: t.conSubtareas ? PLANTILLA_CONTENIDO.map((s, i) => ({ ...s, id: "s" + Date.now() + i, fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] })) : p.subtareas }));
+  const aplicarPlantillaTarea = (t) => setF((p) => ({ ...p, entidad: t.entidad, area: t.area, subcategoria: t.subcategoria, tipoTrabajo: t.tipoTrabajo, prioridad: t.prioridad, responsableId: t.responsableId, subtareas: plantillaSubs(t).length ? materializarSubs(t) : p.subtareas }));
   const [guardarPlantilla, setGuardarPlantilla] = useState(false);
   const [nombrePlantilla, setNombrePlantilla] = useState("");
 
@@ -899,7 +902,7 @@ function Catalogos({ cat, setCat }) {
 }
 
 function Plantillas({ cat, setCat, actor }) {
-  const [nPl, setNPl] = useState({ nombre: "", entidad: "Primer Equipo", area: "Marketing", subcategoria: "", tipoTrabajo: "Pieza de contenido", prioridad: "Media", responsableId: "dis", conSubtareas: false });
+  const [nPl, setNPl] = useState({ nombre: "", entidad: "Primer Equipo", area: "Marketing", subcategoria: "", tipoTrabajo: "Pieza de contenido", prioridad: "Media", responsableId: "dis" });
   const upd = (parcial) => setCat({ ...cat, ...parcial });
   const plantillas = cat.plantillasTarea || [];
   const dueno = (t) => t.duenoId || "ronald"; // las de ejemplo (sin dueño) son del admin
@@ -911,22 +914,39 @@ function Plantillas({ cat, setCat, actor }) {
       <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><Copy size={15} className="text-slate-400" />Mis plantillas</p>
       <p className="mb-3 text-xs text-slate-400">Moldes con tus campos repetitivos. Son personales: solo tú las ves y las usas en la captura rápida y en "Nueva" → "Cargar plantilla".</p>
       <div className="space-y-2">
-        {mias.map((t) => (
+        {mias.map((t) => {
+          const subs = plantillaSubs(t);
+          const setSubs = (ns) => updT(t.id, { subtareasPlantilla: ns });
+          return (
           <div key={t.id} className="rounded-lg bg-slate-50 p-2.5">
             <div className="flex items-center gap-2">
               <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" value={t.nombre} onChange={(e) => updT(t.id, { nombre: e.target.value })} />
               <button onClick={() => delT(t.id)} className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={14} /></button>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.entidad} onChange={(e) => updT(t.id, { entidad: e.target.value })}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
               <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.area} onChange={(e) => updT(t.id, { area: e.target.value, subcategoria: "" })}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
               <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.tipoTrabajo} onChange={(e) => updT(t.id, { tipoTrabajo: e.target.value })}>{cat.tipos.map((x) => <option key={x}>{x}</option>)}</select>
               <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.prioridad} onChange={(e) => updT(t.id, { prioridad: e.target.value })}>{PRIOS.map((x) => <option key={x}>{x}</option>)}</select>
               <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={t.responsableId} onChange={(e) => updT(t.id, { responsableId: e.target.value })}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
-              <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={!!t.conSubtareas} onChange={(e) => updT(t.id, { conSubtareas: e.target.checked })} className="h-3.5 w-3.5" />proceso</label>
+            </div>
+            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white p-2">
+              <p className="mb-1.5 text-[11px] font-medium text-slate-500">Subtareas del proceso <span className="font-normal text-slate-400">(opcional · se crean al usar la plantilla)</span></p>
+              <div className="space-y-1.5">
+                {subs.map((s, j) => (
+                  <div key={j} className="flex items-center gap-1.5">
+                    <input className="min-w-0 flex-1 rounded border border-slate-200 px-2 py-1 text-[11px]" value={s.titulo} placeholder={`Paso ${j + 1}`} onChange={(e) => setSubs(subs.map((x, k) => (k === j ? { ...x, titulo: e.target.value } : x)))} />
+                    <select className="rounded border border-slate-200 px-1 py-1 text-[11px]" value={s.duenoId} onChange={(e) => setSubs(subs.map((x, k) => (k === j ? { ...x, duenoId: e.target.value } : x)))}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
+                    <select className="rounded border border-slate-200 px-1 py-1 text-[11px]" value={s.miFuncion} onChange={(e) => setSubs(subs.map((x, k) => (k === j ? { ...x, miFuncion: e.target.value } : x)))}>{FUNCIONES.map((x) => <option key={x}>{x}</option>)}</select>
+                    <button onClick={() => setSubs(subs.filter((_, k) => k !== j))} className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X size={12} /></button>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setSubs([...subs, { titulo: "", duenoId: cat.personas[0]?.id || "dis", miFuncion: "Ejecuto" }])} className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"><Plus size={12} />Agregar paso</button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {mias.length === 0 && <p className="py-2 text-center text-xs text-slate-400">Aún no tienes plantillas. Crea una abajo.</p>}
       </div>
       <div className="mt-3 border-t border-slate-100 pt-3">
@@ -934,12 +954,12 @@ function Plantillas({ cat, setCat, actor }) {
           <input className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm" placeholder="Nombre de la plantilla" value={nPl.nombre} onChange={(e) => setNPl({ ...nPl, nombre: e.target.value })} />
           <button onClick={() => { if (nPl.nombre.trim()) { upd({ plantillasTarea: [...plantillas, { id: "t" + Date.now(), ...nPl, duenoId: actor }] }); setNPl({ ...nPl, nombre: "" }); } }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white"><Plus size={13} />Agregar</button>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.entidad} onChange={(e) => setNPl({ ...nPl, entidad: e.target.value })}>{ENTIDADES.map((x) => <option key={x}>{x}</option>)}</select>
           <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.area} onChange={(e) => setNPl({ ...nPl, area: e.target.value })}>{AREAS.map((x) => <option key={x}>{x}</option>)}</select>
           <select className="w-full rounded border border-slate-200 px-1.5 py-1.5 text-[11px]" value={nPl.responsableId} onChange={(e) => setNPl({ ...nPl, responsableId: e.target.value })}>{cat.personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select>
-          <label className="inline-flex items-center gap-1 px-1 text-[11px] text-slate-500"><input type="checkbox" checked={nPl.conSubtareas} onChange={(e) => setNPl({ ...nPl, conSubtareas: e.target.checked })} className="h-3.5 w-3.5" />proceso</label>
         </div>
+        <p className="mt-1.5 text-[11px] text-slate-400">Crea la plantilla y luego, en su fila, agrega los pasos (subtareas) del proceso.</p>
       </div>
     </div>
   );
@@ -998,7 +1018,7 @@ export default function CentroDeMando({ session, onSignOut }) {
     const c = diffEventos(null, { ...a, id: Date.now() }, actor, nombre);
     let next = { ...db, actividades: [...acts, c] };
     if (plantillaReq) {
-      const nuevaPl = { id: "t" + Date.now(), nombre: (plantillaReq.nombre || "").trim() || `${a.area} · ${a.tipoTrabajo}`, entidad: a.entidad, area: a.area, subcategoria: a.subcategoria || "", tipoTrabajo: a.tipoTrabajo, prioridad: a.prioridad, responsableId: a.responsableId, conSubtareas: (a.subtareas || []).length > 0, duenoId: actor };
+      const nuevaPl = { id: "t" + Date.now(), nombre: (plantillaReq.nombre || "").trim() || `${a.area} · ${a.tipoTrabajo}`, entidad: a.entidad, area: a.area, subcategoria: a.subcategoria || "", tipoTrabajo: a.tipoTrabajo, prioridad: a.prioridad, responsableId: a.responsableId, subtareasPlantilla: (a.subtareas || []).map((s) => ({ titulo: s.titulo, duenoId: s.duenoId, miFuncion: s.miFuncion || "Ejecuto" })), duenoId: actor };
       next = { ...next, catalogos: { ...db.catalogos, plantillasTarea: [...(db.catalogos.plantillasTarea || []), nuevaPl] } };
     }
     persist(next); setModal(null);
@@ -1029,7 +1049,7 @@ export default function CentroDeMando({ session, onSignOut }) {
   const quickCrear = ({ titulo, plantilla, entidad, prioridad, fechaTope }) => {
     const t = plantilla || {};
     const hoyISO = HOY.toISOString().slice(0, 10);
-    const subtareas = t.conSubtareas ? PLANTILLA_CONTENIDO.map((s, i) => ({ ...s, id: "s" + Date.now() + i, fecha: "", prioridad: "Media", estado: "porhacer", eventos: [] })) : [];
+    const subtareas = materializarSubs(t);
     const base = {
       titulo, descripcion: "", proyectoId: "", entidad,
       area: t.area || "Marketing", subcategoria: t.subcategoria || "", tipoTrabajo: t.tipoTrabajo || "Pieza de contenido",
