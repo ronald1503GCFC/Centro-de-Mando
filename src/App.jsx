@@ -1090,13 +1090,16 @@ export default function CentroDeMando({ session, onSignOut }) {
 
   const actsEnt = acts.filter((a) => entidad === "Todos" || a.entidad === entidad);
   const actsF = actsEnt.filter(puedeVer);
-  // Visibilidad a nivel de tarjeta (subtarea). En "solo lo suyo" se ve únicamente lo propio;
-  // si la persona es la responsable de la actividad, ve todo su proceso.
+  // Visibilidad a nivel de tarjeta (subtarea):
+  // - Ve TODAS las tarjetas de una actividad si es de una entidad que ve, si la lidera, o si ve todo.
+  // - Si solo la ve por participar (tiene una subtarea ahí), ve ÚNICAMENTE sus propias tarjetas.
   const verUnit = (u) => {
+    if (esAdmin) return true;
     const a = acts.find((x) => String(x.id) === String(u.actId));
-    if (!a || !puedeVer(a)) return false;
-    if (!esAdmin && alcance === "solo" && yo) return a.responsableId === yo.id || u.duenoId === yo.id;
-    return true;
+    if (!a || !puedeVer(a) || !yo) return false;
+    if (alcance === "todo") return true;
+    if (alcance === "entidades" && entidadesVis.includes(a.entidad)) return true;
+    return a.responsableId === yo.id || u.duenoId === yo.id;
   };
   const units = buildUnits(actsF).filter(verUnit);
   const unitsAll = buildUnits(actsEnt); // Por persona: carga (números) visible para todos
