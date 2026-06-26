@@ -1174,7 +1174,8 @@ export default function CentroDeMando({ session, onSignOut }) {
           </div>
           <div className="hidden items-center gap-1.5 sm:flex">
             <span className="rounded-md bg-white/10 px-2 py-1.5 text-xs text-white">{yo ? yo.nombre : (session?.user?.email || "—")}</span>
-            {esAdmin && <span className="rounded-md bg-sky-500/30 px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100">Admin</span>}
+            {esAdmin ? <span className="rounded-md bg-sky-500/30 px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100">Admin</span>
+              : <span className="rounded-md bg-white/10 px-1.5 py-1 text-[10px] font-medium text-white/70">{!yo ? "sin vincular" : (alcance === "solo" ? "ve solo lo suyo" : alcance === "entidades" ? "ve entidades" : "ve todo")}</span>}
           </div>
           <button onClick={() => setQuick(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 hover:bg-white/10 sm:px-3"><Clock size={15} />Rápida</button>
           <button onClick={() => setModal({ a: null })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-2 text-sm font-medium text-white hover:bg-white/20 sm:px-3"><Plus size={16} />Nueva</button>
