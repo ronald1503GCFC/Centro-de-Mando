@@ -1090,11 +1090,17 @@ export default function CentroDeMando({ session, onSignOut }) {
 
   const actsEnt = acts.filter((a) => entidad === "Todos" || a.entidad === entidad);
   const actsF = actsEnt.filter(puedeVer);
-  const units = buildUnits(actsF);
+  // Visibilidad a nivel de tarjeta (subtarea). En "solo lo suyo" se ve únicamente lo propio;
+  // si la persona es la responsable de la actividad, ve todo su proceso.
+  const verUnit = (u) => {
+    const a = acts.find((x) => String(x.id) === String(u.actId));
+    if (!a || !puedeVer(a)) return false;
+    if (!esAdmin && alcance === "solo" && yo) return a.responsableId === yo.id || u.duenoId === yo.id;
+    return true;
+  };
+  const units = buildUnits(actsF).filter(verUnit);
   const unitsAll = buildUnits(actsEnt); // Por persona: carga (números) visible para todos
-  const visibleActIds = new Set(actsF.map((a) => String(a.id)));
-  const verUnit = (u) => visibleActIds.has(String(u.actId)); // el detalle se limita a lo que cada quien puede ver
-  const vencidasTot = buildUnits(actsF).filter(venc).length;
+  const vencidasTot = units.filter(venc).length;
   const misPlantillas = (cat?.plantillasTarea || []).filter((t) => (t.duenoId || "ronald") === actor);
 
   const crear = (a, plantillaReq) => {
